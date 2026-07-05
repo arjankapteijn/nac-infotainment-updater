@@ -178,6 +178,19 @@ Same flow, but for the European cartography (~19 GB). No UIN or license needed f
 
 ---
 
+## Windows-Specific Fixes (2026-07)
+
+`Prepare-NacFirmwareUpdate.ps1` was tested end-to-end on a real vehicle (DS 7 Crossback, upgrading `40.04.20.22_NAC-r0` → `44.07.33.32_NAC-r0`, Windows 10, PowerShell 5.1) and confirmed working. Along the way, four bugs specific to Windows PowerShell were found and fixed:
+
+1. **Script wouldn't parse at all** — the file's em-dash (`—`) characters were misread by Windows PowerShell 5.1's default codepage when the file had no BOM, corrupting string literals and causing "Unexpected token" parse errors. Fixed by saving the script as UTF-8 **with BOM**.
+2. **Single-USB-drive auto-select never triggered** — `$usbDrives.Count -eq 1` was unreliable when `Where-Object` returned a single scalar object instead of an array, sending the flow into the manual-selection prompt and then rejecting a valid `1` due to the same issue affecting the bounds check. Fixed by forcing array context with `@(...)` around the drive-selection pipelines.
+3. **False "Archive appears corrupted" error** — piping `tar.exe tf` through `Select-Object -First 5` could cause PowerShell to close the pipe early, making `tar.exe` exit non-zero even on a perfectly valid archive. Fixed by capturing the full output before checking `$LASTEXITCODE`/filtering.
+4. **`Initialize-Disk` failing with "The disk has already been initialized"** — immediately after `Clear-Disk`, some USB controllers report the disk as still having its old partition style for a moment. Fixed by wiping the disk with `diskpart clean` and falling back to `Set-Disk -PartitionStyle MBR` when it is already initialized (see the gotchas table below).
+
+Screenshots of the confirmed working install are in [hjertmann/nac-infotainment-updater#5](https://github.com/hjertmann/nac-infotainment-updater/pull/5).
+
+---
+
 ## Troubleshooting
 
 ### "Version not compatible with hardware"
