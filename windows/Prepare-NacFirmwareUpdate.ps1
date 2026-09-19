@@ -184,40 +184,26 @@ function Format-UsbDrive {
     Write-Header "Formatting USB Drive as FAT32"
 
     Write-Info "Cleaning disk $($Disk.Number)..."
-    # Reliably wipe the disk before initializing. Clear-Disk can leave the disk
-    # still carrying a partition style (or fail silently under -ErrorAction
-    # SilentlyContinue), which makes Initialize-Disk throw
-    # "The disk has already been initialized". Use diskpart 'clean' as a
-    # dependable wipe, then only initialize when the disk is actually RAW.
-    $cleaned = $false
-    try {
-        Clear-Disk -Number $Disk.Number -RemoveData -RemoveOEM -Confirm:$false -ErrorAction Stop
-        $cleaned = $true
-    } catch {
-        Write-Warn "Clear-Disk failed ($($_.Exception.Message)). Falling back to diskpart clean..."
-    }
+    # Clear the disk and create MBR + single FAT32 partition
+    Clear-Disk -Number $Disk.Number -RemoveData -RemoveOEM -Confirm:$false -ErrorAction SilentlyContinue
 
-    if (-not $cleaned) {
-        $cleanScript = @"
+    # Clear-Disk can leave the disk initialized; wipe the partition table reliably.
+    $cleanScript = @"
 select disk $($Disk.Number)
 clean
 "@
-        $cleanScript | diskpart.exe | Out-Null
-        Start-Sleep -Seconds 2
-    }
-
-    # Refresh the disk state so PartitionStyle reflects the wipe.
-    $currentDisk = Get-Disk -Number $Disk.Number
+    $cleanScript | diskpart.exe | Out-Null
+    Start-Sleep -Seconds 2
 
     Write-Info "Initializing with MBR partition table..."
-    if ($currentDisk.PartitionStyle -eq 'RAW') {
+    try {
         Initialize-Disk -Number $Disk.Number -PartitionStyle MBR -ErrorAction Stop
-    } else {
-        # Already initialized (e.g. by an automatic re-mount after clean).
-        # Re-set the partition style rather than calling Initialize-Disk,
-        # which would fail with "The disk has already been initialized".
-        Write-Info "Disk already initialized as $($currentDisk.PartitionStyle); resetting to MBR..."
-        Set-Disk -Number $Disk.Number -PartitionStyle MBR -ErrorAction Stop
+    } catch {
+        # Disk may already be initialized (e.g. Windows re-mounted it after the
+        # clean). Fall back to setting the partition style rather than failing
+        # with "The disk has already been initialized".
+        Write-Info "Disk already initialized; ensuring MBR partition style..."
+        Set-Disk -Number $Disk.Number -PartitionStyle MBR -ErrorAction SilentlyContinue
     }
 
     Write-Info "Creating FAT32 partition..."
