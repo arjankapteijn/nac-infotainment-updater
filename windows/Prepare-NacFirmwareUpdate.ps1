@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
     NAC Wave 4 Firmware Update - USB Preparation Script (Windows 10/11)
 
