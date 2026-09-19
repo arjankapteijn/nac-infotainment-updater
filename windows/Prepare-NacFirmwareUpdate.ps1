@@ -117,16 +117,18 @@ function Select-UsbDrive {
         Sort-Object Number
 
     # Filter to truly removable drives (exclude large external HDDs as safety measure)
-    $usbDrives = $removable | Where-Object {
+    # Wrap in @() so a single match is still an array (Where-Object returns a
+    # scalar for one result, which breaks .Count and index-based selection).
+    $usbDrives = @($removable | Where-Object {
         $_.MediaType -eq 'Removable' -or $_.Size -lt 256GB
-    }
+    })
 
-    if (-not $usbDrives -or $usbDrives.Count -eq 0) {
+    if ($usbDrives.Count -eq 0) {
         # Fallback: show all USB bus devices
-        $usbDrives = Get-Disk | Where-Object { $_.BusType -eq 'USB' -and $_.Size -gt 0 }
+        $usbDrives = @(Get-Disk | Where-Object { $_.BusType -eq 'USB' -and $_.Size -gt 0 })
     }
 
-    if (-not $usbDrives -or $usbDrives.Count -eq 0) {
+    if ($usbDrives.Count -eq 0) {
         Write-Err "No USB drives detected. Make sure your USB drive is plugged in."
         exit 1
     }
@@ -182,11 +184,41 @@ function Format-UsbDrive {
     Write-Header "Formatting USB Drive as FAT32"
 
     Write-Info "Cleaning disk $($Disk.Number)..."
-    # Clear the disk and create MBR + single FAT32 partition
-    Clear-Disk -Number $Disk.Number -RemoveData -RemoveOEM -Confirm:$false -ErrorAction SilentlyContinue
+    # Reliably wipe the disk before initializing. Clear-Disk can leave the disk
+    # still carrying a partition style (or fail silently under -ErrorAction
+    # SilentlyContinue), which makes Initialize-Disk throw
+    # "The disk has already been initialized". Use diskpart 'clean' as a
+    # dependable wipe, then only initialize when the disk is actually RAW.
+    $cleaned = $false
+    try {
+        Clear-Disk -Number $Disk.Number -RemoveData -RemoveOEM -Confirm:$false -ErrorAction Stop
+        $cleaned = $true
+    } catch {
+        Write-Warn "Clear-Disk failed ($($_.Exception.Message)). Falling back to diskpart clean..."
+    }
+
+    if (-not $cleaned) {
+        $cleanScript = @"
+select disk $($Disk.Number)
+clean
+"@
+        $cleanScript | diskpart.exe | Out-Null
+        Start-Sleep -Seconds 2
+    }
+
+    # Refresh the disk state so PartitionStyle reflects the wipe.
+    $currentDisk = Get-Disk -Number $Disk.Number
 
     Write-Info "Initializing with MBR partition table..."
-    Initialize-Disk -Number $Disk.Number -PartitionStyle MBR -ErrorAction Stop
+    if ($currentDisk.PartitionStyle -eq 'RAW') {
+        Initialize-Disk -Number $Disk.Number -PartitionStyle MBR -ErrorAction Stop
+    } else {
+        # Already initialized (e.g. by an automatic re-mount after clean).
+        # Re-set the partition style rather than calling Initialize-Disk,
+        # which would fail with "The disk has already been initialized".
+        Write-Info "Disk already initialized as $($currentDisk.PartitionStyle); resetting to MBR..."
+        Set-Disk -Number $Disk.Number -PartitionStyle MBR -ErrorAction Stop
+    }
 
     Write-Info "Creating FAT32 partition..."
     $partition = New-Partition -DiskNumber $Disk.Number -UseMaximumSize -IsActive -AssignDriveLetter
@@ -308,50 +340,44 @@ function Download-WithResume {
                 $response.Close()
                 Write-Progress -Activity "Downloading firmware" -Completed
             } else {
-                # Fresh download: use BITS for better performance and resume
-                $bitsOk = $false
-                try {
-                    Import-Module BitsTransfer -ErrorAction Stop
-                    Start-BitsTransfer -Source $Url -Destination $Dest -DisplayName "NAC Firmware" -Description "Downloading $FirmwareVersion"
-                    $bitsOk = $true
-                } catch {
-                    Write-Warn "BITS transfer failed, falling back to .NET download..."
-                }
+                # Fresh download: use .NET HttpWebRequest streaming directly.
+                # BITS is NOT used here: it requires the server to support HTTP
+                # Range requests, and majestic-web.mpsa.com does not, so
+                # Start-BitsTransfer throws a COMException that can abort the
+                # whole download. Streaming with HttpWebRequest works without
+                # Range support (resume for interrupted downloads is handled by
+                # the $currentSize branch above on the next attempt).
+                $request = [System.Net.HttpWebRequest]::Create($Url)
+                $request.Timeout = 30000
+                $request.ReadWriteTimeout = 120000
+                $request.AllowAutoRedirect = $true
 
-                if (-not $bitsOk) {
-                    # Fallback: .NET download with progress
-                    $request = [System.Net.HttpWebRequest]::Create($Url)
-                    $request.Timeout = 30000
-                    $request.ReadWriteTimeout = 120000
-                    $request.AllowAutoRedirect = $true
+                $response = $request.GetResponse()
+                $stream = $response.GetResponseStream()
+                $fileStream = [System.IO.FileStream]::new($Dest, [System.IO.FileMode]::Create, [System.IO.FileAccess]::Write)
 
-                    $response = $request.GetResponse()
-                    $stream = $response.GetResponseStream()
-                    $fileStream = [System.IO.FileStream]::new($Dest, [System.IO.FileMode]::Create, [System.IO.FileAccess]::Write)
+                $buffer = New-Object byte[] 131072
+                $totalRead = 0
+                $expectedTotal = $response.ContentLength
+                $lastReport = Get-Date
 
-                    $buffer = New-Object byte[] 131072
-                    $totalRead = 0
-                    $expectedTotal = $response.ContentLength
-                    $lastReport = Get-Date
+                while (($read = $stream.Read($buffer, 0, $buffer.Length)) -gt 0) {
+                    $fileStream.Write($buffer, 0, $read)
+                    $totalRead += $read
 
-                    while (($read = $stream.Read($buffer, 0, $buffer.Length)) -gt 0) {
-                        $fileStream.Write($buffer, 0, $read)
-                        $totalRead += $read
-
-                        $now = Get-Date
-                        if (($now - $lastReport).TotalSeconds -ge 2) {
-                            $pct = if ($expectedTotal -gt 0) { [math]::Round(($totalRead / $expectedTotal) * 100, 1) } else { 0 }
-                            $dlMb = [math]::Round($totalRead / 1MB)
-                            Write-Progress -Activity "Downloading firmware" -Status "$dlMb MB downloaded ($pct%)" -PercentComplete ([math]::Min($pct, 100))
-                            $lastReport = $now
-                        }
+                    $now = Get-Date
+                    if (($now - $lastReport).TotalSeconds -ge 2) {
+                        $pct = if ($expectedTotal -gt 0) { [math]::Round(($totalRead / $expectedTotal) * 100, 1) } else { 0 }
+                        $dlMb = [math]::Round($totalRead / 1MB)
+                        Write-Progress -Activity "Downloading firmware" -Status "$dlMb MB downloaded ($pct%)" -PercentComplete ([math]::Min($pct, 100))
+                        $lastReport = $now
                     }
-
-                    $fileStream.Close()
-                    $stream.Close()
-                    $response.Close()
-                    Write-Progress -Activity "Downloading firmware" -Completed
                 }
+
+                $fileStream.Close()
+                $stream.Close()
+                $response.Close()
+                Write-Progress -Activity "Downloading firmware" -Completed
             }
 
             # Verify we got something substantial
