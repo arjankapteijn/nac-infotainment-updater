@@ -478,8 +478,15 @@ function Test-Firmware {
 
     # Basic tar check — Windows 10 1803+ has tar.exe built in
     Write-Info "Checking archive integrity..."
-    $tarCheck = & tar.exe tf $Path 2>&1 | Select-Object -First 5
-    if ($LASTEXITCODE -ne 0) {
+    # Capture the FULL tar output and its exit code first. Piping tar.exe
+    # straight into `Select-Object -First 5` closes the pipe after 5 entries,
+    # so tar then writes to a broken pipe and exits non-zero — which made the
+    # script wrongly report an intact archive as corrupted. Read everything,
+    # record $LASTEXITCODE, then take the first entries from the captured output.
+    $tarOut = & tar.exe tf $Path 2>&1
+    $tarExit = $LASTEXITCODE
+    $tarCheck = $tarOut | Select-Object -First 5
+    if ($tarExit -ne 0) {
         Write-Err "Archive appears corrupted. Re-download it."
         exit 1
     }
@@ -550,9 +557,42 @@ function Expand-ToUsb {
     Write-Header "Extracting Firmware to USB"
     Write-Info "Extracting ~5.9 GB archive. This takes several minutes..."
 
-    & tar.exe xf $TarPath -C $UsbRoot 2>&1 | Where-Object { $_ -notmatch "unknown extended header" }
+    # Drive progress from bytes written, NOT from a pre-count of entries.
+    # Running `tar tf` first would force a full sequential read of the whole
+    # ~5.9 GB archive and roughly double the total time. Instead we run the
+    # extraction in a background job and poll the destination SWL folder size
+    # against the known source archive size.
+    $sourceSize = (Get-Item $TarPath).Length
+    $swlPath = Join-Path $UsbRoot "SWL"
 
-    if (Test-Path (Join-Path $UsbRoot "SWL")) {
+    $job = Start-Job -ScriptBlock {
+        param($TarPath, $UsbRoot)
+        & tar.exe xf $TarPath -C $UsbRoot 2>&1 | Where-Object { $_ -notmatch "unknown extended header" }
+    } -ArgumentList $TarPath, $UsbRoot
+
+    try {
+        while ($job.State -eq 'Running') {
+            $written = 0
+            if (Test-Path $swlPath) {
+                $measure = Get-ChildItem -Path $swlPath -Recurse -File -ErrorAction SilentlyContinue |
+                    Measure-Object -Property Length -Sum
+                if ($measure) { $written = $measure.Sum }
+            }
+            $writtenMb = [math]::Round($written / 1MB)
+            $pct = if ($sourceSize -gt 0) { [math]::Round(($written / $sourceSize) * 100, 1) } else { 0 }
+            # Cap at 99% until tar actually exits.
+            $pct = [math]::Min($pct, 99)
+            Write-Progress -Activity "Extracting firmware" -Status "$writtenMb MB written (~$pct%)" -PercentComplete $pct
+            Start-Sleep -Milliseconds 500
+        }
+    } finally {
+        # Surface any tar output and clean up the job.
+        Receive-Job -Job $job -ErrorAction SilentlyContinue | Out-Null
+        Remove-Job -Job $job -Force -ErrorAction SilentlyContinue
+        Write-Progress -Activity "Extracting firmware" -Completed
+    }
+
+    if (Test-Path $swlPath) {
         Write-Ok "Extraction complete. SWL\ directory present."
     } else {
         Write-Err "SWL\ directory missing after extraction!"
