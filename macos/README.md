@@ -11,7 +11,7 @@ These scripts exist because the official Citroën/Peugeot/DS/Opel Update apps fr
 | Script | What it does |
 |---|---|
 | `prepare_nac_update_mac.sh` | Downloads and prepares firmware **44.07.33.32_NAC-r0** (latest NAC Wave 4 firmware) |
-| `prepare_nac_map_update_mac.sh` | Downloads and prepares European map **17.0.0-r0** (latest cartography, ~19 GB) |
+| `prepare_nac_map_update_mac.sh` | Downloads and prepares European map **21.0.0-r0** (latest cartography, ~19 GB) |
 
 **Always install firmware first, then maps.** The map update requires Wave 4 firmware.
 
@@ -146,7 +146,7 @@ bash prepare_nac_update_mac.sh --skip-format                   # don't reformat 
 bash prepare_nac_map_update_mac.sh
 ```
 
-Same flow, but for the European cartography (17.0.0-r0). This is a ~19 GB download. No UIN or license file is needed for map updates.
+Same flow, but for the European cartography (21.0.0-r0). This is a ~19 GB download. No UIN or license file is needed for map updates.
 
 **Options:**
 
@@ -207,7 +207,7 @@ You can also download manually with:
 curl -L -C - -o firmware.tar "https://majestic-web.mpsa.com/nas/eu/mjb00/PSA/mjbsu/PSA_ovip-int-firmware-version_44-07-33-32_NAC-r0_NAC_EUR_WAVE4.tar"
 
 # Maps:
-curl -L -C - -o maps.tar "https://download-cde.tomtom.com/OEM/PSA/MAP/PSA_map-eur_17.0.0-r0-NAC_EUR_WAVE4.tar"
+curl -L -C - -o maps.tar "https://download-cde.tomtom.com/OEM/PSA/MAP/PSA_map-eur_21.0.0-r0-NAC_EUR_WAVE4.tar"
 ```
 
 Then pass them to the scripts with `--tar /path/to/file.tar`.
