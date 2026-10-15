@@ -492,6 +492,14 @@ prepare_license() {
                 rm -f "$tmp_license"
                 return 1
             fi
+            # The server sometimes answers 200 with an empty body. A valid
+            # license is an S/MIME signed message (~7 KB).
+            if ! head -c 20 "$tmp_license" | grep "MIME-Version" >/dev/null; then
+                warn "Downloaded license is empty or invalid ($(get_file_size "$tmp_license") bytes)."
+                warn "Re-run the script to try again, or the car must have internet access!"
+                rm -f "$tmp_license"
+                return 1
+            fi
             license_found="$tmp_license"
             success "License downloaded."
         else
