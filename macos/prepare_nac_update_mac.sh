@@ -445,7 +445,9 @@ validate_firmware() {
         exit 1
     fi
 
-    if $TAR_CMD tf "$tar_path" 2>/dev/null | grep -q "SWL/"; then
+    # No grep -q: it exits on the first match, tar then dies of SIGPIPE (141)
+    # and with pipefail the whole check fails even though SWL/ is there.
+    if $TAR_CMD tf "$tar_path" 2>/dev/null | grep "SWL/" >/dev/null; then
         success "Contains SWL/ directory structure."
     else
         error "No SWL/ directory found. Wrong file?"
