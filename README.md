@@ -1,5 +1,16 @@
 # NAC Wave 4 Infotainment Updater
 
+> **This is a maintained fork of [hjertmann/nac-infotainment-updater](https://github.com/hjertmann/nac-infotainment-updater).**
+> All credit for the original scripts goes to the upstream author. The upstream repository has not been updated since March 2026 and several pull requests are still waiting for review, so this fork collects those fixes in one place. If upstream becomes active again, everything here is available to merge back.
+>
+> Changes compared to upstream:
+>
+> - Download resume no longer loops forever when the server ignores Range requests (macOS and Windows) — [#9](https://github.com/hjertmann/nac-infotainment-updater/issues/9), [#10](https://github.com/hjertmann/nac-infotainment-updater/pull/10)
+> - No more false "No SWL/ directory found" error on a valid archive (macOS) — [#11](https://github.com/hjertmann/nac-infotainment-updater/issues/11)
+> - An empty or invalid license download is rejected instead of reported as success — [#12](https://github.com/hjertmann/nac-infotainment-updater/issues/12)
+> - European map updated to `21.0.0-r0` — [#1](https://github.com/hjertmann/nac-infotainment-updater/issues/1)
+> - Windows fixes for single-USB selection, disk initialization, BITS without Range support, the false "archive corrupted" report and UTF-8 parsing, from [#7](https://github.com/hjertmann/nac-infotainment-updater/pull/7) by [@ac-uy](https://github.com/ac-uy) and [#5](https://github.com/hjertmann/nac-infotainment-updater/pull/5) by [@akarshvijayan](https://github.com/akarshvijayan)
+
 Scripts to prepare a USB drive for updating the Continental NAC Wave 4 infotainment system found in Peugeot, Citroën, DS, and Opel/Vauxhall vehicles (~2017 onwards).
 
 ---
