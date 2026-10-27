@@ -290,45 +290,38 @@ function Download-WithResume {
                 $fileStream.Close(); $stream.Close(); $response.Close()
                 Write-Progress -Activity "Downloading maps" -Completed
             } else {
-                $bitsOk = $false
-                try {
-                    Import-Module BitsTransfer -ErrorAction Stop
-                    Start-BitsTransfer -Source $Url -Destination $Dest -DisplayName "NAC Maps" -Description "Downloading map-eur $MapVersion (~19 GB)"
-                    $bitsOk = $true
-                } catch {
-                    Write-Warn "BITS transfer failed, falling back to .NET download..."
-                }
+                # Fresh download: stream with HttpWebRequest, not BITS. A BITS job
+                # outlives this script: after Ctrl+C or closing the window it keeps
+                # downloading the full ~19 GB in the background, into a temp file the
+                # resume logic never sees, so the next run starts a second job.
+                $request = [System.Net.HttpWebRequest]::Create($Url)
+                $request.Timeout = 30000
+                $request.ReadWriteTimeout = 120000
+                $request.AllowAutoRedirect = $true
 
-                if (-not $bitsOk) {
-                    $request = [System.Net.HttpWebRequest]::Create($Url)
-                    $request.Timeout = 30000
-                    $request.ReadWriteTimeout = 120000
-                    $request.AllowAutoRedirect = $true
+                $response = $request.GetResponse()
+                $stream = $response.GetResponseStream()
+                $fileStream = [System.IO.FileStream]::new($Dest, [System.IO.FileMode]::Create, [System.IO.FileAccess]::Write)
 
-                    $response = $request.GetResponse()
-                    $stream = $response.GetResponseStream()
-                    $fileStream = [System.IO.FileStream]::new($Dest, [System.IO.FileMode]::Create, [System.IO.FileAccess]::Write)
+                $buffer = New-Object byte[] 131072
+                $totalRead = 0
+                $expectedTotal = $response.ContentLength
+                $lastReport = Get-Date
 
-                    $buffer = New-Object byte[] 131072
-                    $totalRead = 0
-                    $expectedTotal = $response.ContentLength
-                    $lastReport = Get-Date
-
-                    while (($read = $stream.Read($buffer, 0, $buffer.Length)) -gt 0) {
-                        $fileStream.Write($buffer, 0, $read)
-                        $totalRead += $read
-                        $now = Get-Date
-                        if (($now - $lastReport).TotalSeconds -ge 2) {
-                            $pct = if ($expectedTotal -gt 0) { [math]::Round(($totalRead / $expectedTotal) * 100, 1) } else { 0 }
-                            $dlMb = [math]::Round($totalRead / 1MB)
-                            Write-Progress -Activity "Downloading maps" -Status "$dlMb MB downloaded ($pct%)" -PercentComplete ([math]::Min($pct, 100))
-                            $lastReport = $now
-                        }
+                while (($read = $stream.Read($buffer, 0, $buffer.Length)) -gt 0) {
+                    $fileStream.Write($buffer, 0, $read)
+                    $totalRead += $read
+                    $now = Get-Date
+                    if (($now - $lastReport).TotalSeconds -ge 2) {
+                        $pct = if ($expectedTotal -gt 0) { [math]::Round(($totalRead / $expectedTotal) * 100, 1) } else { 0 }
+                        $dlMb = [math]::Round($totalRead / 1MB)
+                        Write-Progress -Activity "Downloading maps" -Status "$dlMb MB downloaded ($pct%)" -PercentComplete ([math]::Min($pct, 100))
+                        $lastReport = $now
                     }
-
-                    $fileStream.Close(); $stream.Close(); $response.Close()
-                    Write-Progress -Activity "Downloading maps" -Completed
                 }
+
+                $fileStream.Close(); $stream.Close(); $response.Close()
+                Write-Progress -Activity "Downloading maps" -Completed
             }
 
             if (Test-Path $Dest) {
