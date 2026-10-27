@@ -272,6 +272,7 @@ RETRY_DELAY_BASE=5      # seconds; doubles each consecutive failure, caps at 120
 CURL_TIMEOUT=30         # --connect-timeout
 CURL_SPEED_LIMIT=1024   # abort if speed drops below this many bytes/sec ...
 CURL_SPEED_TIME=60      # ... for this many seconds (stall detection)
+MIN_DOWNLOAD_SIZE=1000000000  # anything smaller is an error page, not firmware
 
 download_with_resume() {
     # Download a single URL with automatic resume-on-failure.
@@ -321,7 +322,7 @@ download_with_resume() {
             # curl exited 0 — but double-check we got a plausible file
             local final_size
             final_size=$(get_file_size "$dest" 2>/dev/null || echo 0)
-            if (( final_size > 1000000000 )); then  # at least ~1 GB
+            if (( final_size > MIN_DOWNLOAD_SIZE )); then
                 return 0
             else
                 warn "File looks too small (${final_size} bytes). Retrying..."
@@ -761,4 +762,7 @@ main() {
     echo ""
 }
 
-main "$@"
+# Only run when executed, not when sourced (the tests source this file).
+if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
+    main "$@"
+fi

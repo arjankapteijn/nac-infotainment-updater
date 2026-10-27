@@ -49,6 +49,7 @@ $ExpectedSize = 19021742080
 $MaxRetries     = 50
 $RetryDelayBase = 5
 $RetryDelayCap  = 120
+$MinDownloadSize = 5000000000
 
 # ── Helpers ────────────────────────────────────────────────────────────────
 function Write-Info    { param($Msg) Write-Host "[INFO] $Msg" -ForegroundColor Cyan }
@@ -326,7 +327,7 @@ function Download-WithResume {
 
             if (Test-Path $Dest) {
                 $finalSize = (Get-Item $Dest).Length
-                if ($finalSize -gt 5000000000) { return $true }
+                if ($finalSize -gt $MinDownloadSize) { return $true }
                 else { Write-Warn "File too small ($finalSize bytes). Retrying..." }
             }
         } catch {

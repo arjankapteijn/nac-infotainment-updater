@@ -243,6 +243,7 @@ RETRY_DELAY_BASE=5
 CURL_TIMEOUT=30
 CURL_SPEED_LIMIT=1024
 CURL_SPEED_TIME=60
+MIN_DOWNLOAD_SIZE=5000000000
 
 download_with_resume() {
     local url="$1"
@@ -289,7 +290,7 @@ download_with_resume() {
         if (( curl_exit == 0 )); then
             local final_size
             final_size=$(get_file_size "$dest" 2>/dev/null || echo 0)
-            if (( final_size > 5000000000 )); then
+            if (( final_size > MIN_DOWNLOAD_SIZE )); then
                 return 0
             else
                 warn "File looks too small (${final_size} bytes). Retrying..."
@@ -607,4 +608,7 @@ main() {
     echo ""
 }
 
-main "$@"
+# Only run when executed, not when sourced (the tests source this file).
+if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
+    main "$@"
+fi

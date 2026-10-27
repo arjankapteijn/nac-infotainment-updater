@@ -66,6 +66,7 @@ $ExpectedSize = 6312212480
 $MaxRetries     = 50
 $RetryDelayBase = 5
 $RetryDelayCap  = 120
+$MinDownloadSize = 1000000000   # anything smaller is an error page, not firmware
 
 # ── Helpers ────────────────────────────────────────────────────────────────
 function Write-Info    { param($Msg) Write-Host "[INFO] $Msg" -ForegroundColor Cyan }
@@ -369,7 +370,7 @@ function Download-WithResume {
             # Verify we got something substantial
             if (Test-Path $Dest) {
                 $finalSize = (Get-Item $Dest).Length
-                if ($finalSize -gt 1000000000) {
+                if ($finalSize -gt $MinDownloadSize) {
                     return $true
                 } else {
                     Write-Warn "File too small ($finalSize bytes). Retrying..."
