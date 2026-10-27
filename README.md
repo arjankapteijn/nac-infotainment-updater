@@ -1,5 +1,7 @@
 # NAC Wave 4 Infotainment Updater
 
+[![Tests](https://github.com/arjankapteijn/nac-infotainment-updater/actions/workflows/tests.yml/badge.svg)](https://github.com/arjankapteijn/nac-infotainment-updater/actions/workflows/tests.yml)
+
 > **This is a maintained fork of [hjertmann/nac-infotainment-updater](https://github.com/hjertmann/nac-infotainment-updater).**
 > All credit for the original scripts goes to the upstream author. The upstream repository has not been updated since March 2026 and several pull requests are still waiting for review, so this fork collects those fixes in one place. If upstream becomes active again, everything here is available to merge back.
 >
@@ -10,6 +12,8 @@
 > - An empty or invalid license download is rejected instead of reported as success — [#12](https://github.com/hjertmann/nac-infotainment-updater/issues/12)
 > - European map updated to `21.0.0-r0` — [#1](https://github.com/hjertmann/nac-infotainment-updater/issues/1)
 > - Windows fixes for single-USB selection, disk initialization, BITS without Range support, the false "archive corrupted" report and UTF-8 parsing, from [#7](https://github.com/hjertmann/nac-infotainment-updater/pull/7) by [@ac-uy](https://github.com/ac-uy) and [#5](https://github.com/hjertmann/nac-infotainment-updater/pull/5) by [@akarshvijayan](https://github.com/akarshvijayan)
+> - The Windows map script no longer leaves a background BITS download running after you abort it
+> - Automated tests for both platforms, run on every push — see [Testing](#testing)
 
 Scripts to prepare a USB drive for updating the Continental NAC Wave 4 infotainment system found in Peugeot, Citroën, DS, and Opel/Vauxhall vehicles (~2017 onwards).
 
@@ -89,6 +93,24 @@ You will need your **NAC UIN** (20-character hex code) for the firmware update. 
 ## Problems?
 
 Please [open a GitHub issue](../../issues) with your vehicle model, current firmware version, OS, and a description of what went wrong.
+
+---
+
+## Testing
+
+Both platforms have a test suite that runs on every push ([GitHub Actions](https://github.com/arjankapteijn/nac-infotainment-updater/actions/workflows/tests.yml)). The tests load the script functions and run them against small local fixtures and a local test server, so they download nothing and never touch a real disk:
+
+```bash
+bash tests/macos/run_tests.sh
+```
+
+```powershell
+powershell -ExecutionPolicy Bypass -File tests\windows\Run-Tests.ps1
+```
+
+They cover USB drive selection, archive validation, extraction, download resume (with and without server Range support) and, on macOS, the license check. On Windows, run as Administrator to include the format test, which uses a throwaway VHD.
+
+In addition, the Windows scripts were checked by hand in a Windows 11 VM (PowerShell 5.1): formatting and extraction on a real USB stick, and real downloads from the Stellantis and TomTom servers, interrupted and resumed. What has not been retested in this fork is a full install in a car.
 
 ---
 
