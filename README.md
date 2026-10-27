@@ -33,6 +33,8 @@ These scripts do what the vendor updater was supposed to do — nothing more. Th
 
 **Tested on:** Citroën C5 Aircross Plug-in Hybrid, upgrading from firmware `42.01.72.32_NAC-r0` to `44.07.33.32_NAC-r0`, using the macOS scripts.
 
+**This fork** was used for a real firmware update on a Citroën C5 Aircross, from `42.03.33.42_NAC-r0` to `44.07.33.32_NAC-r0`, with the macOS firmware script (including the download-resume and license fixes).
+
 **Windows scripts** have now been tested end-to-end on a DS 7 Crossback, upgrading from `40.04.20.22_NAC-r0` to `44.07.33.32_NAC-r0` (Windows 10/11, PowerShell 5.1). A few Windows-specific bugs were found and fixed in the process — see [windows/README.md](windows/README.md#windows-specific-fixes-2026-07) for details.
 
 Updating car infotainment systems always carries some risk. Do not turn off the engine during installation.
@@ -110,7 +112,7 @@ powershell -ExecutionPolicy Bypass -File tests\windows\Run-Tests.ps1
 
 They cover USB drive selection, archive validation, extraction, download resume (with and without server Range support) and, on macOS, the license check. On Windows, run as Administrator to include the format test, which uses a throwaway VHD.
 
-In addition, the Windows scripts were checked by hand in a Windows 11 VM (PowerShell 5.1): formatting and extraction on a real USB stick, and real downloads from the Stellantis and TomTom servers, interrupted and resumed. What has not been retested in this fork is a full install in a car.
+In addition, the Windows scripts were checked by hand in a Windows 11 VM (PowerShell 5.1): formatting and extraction on a real USB stick, and real downloads from the Stellantis and TomTom servers, interrupted and resumed. The macOS firmware script from this fork was also used for a full install in a car (see [Use at your own risk](#use-at-your-own-risk)); the Windows scripts from this fork have not been used in a car yet.
 
 ---
 
