@@ -1,0 +1,43 @@
+name: Update watch
+
+# Weekly check of rui.saraiva's tracker and of the download URLs in the
+# scripts. Opens an issue (or comments on the open one) when something changed.
+on:
+  schedule:
+    - cron: '17 6 * * 1'   # Mondays 06:17 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  issues: write
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check tracker and download URLs
+        run: python3 tools/check_updates.py .github/update-watch/state.json "$RUNNER_TEMP/report.md"
+
+      - name: Open or update the issue
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          report="$RUNNER_TEMP/report.md"
+          [ -f "$report" ] || { echo "Nothing to report."; exit 0; }
+          gh label create update-watch --color 0E8A16 --description "Opened by the weekly update watch" 2>/dev/null || true
+          open=$(gh issue list --label update-watch --state open --json number --jq '.[0].number')
+          if [ -n "$open" ]; then
+            gh issue comment "$open" --body-file "$report"
+          else
+            gh issue create --title "Update watch: change detected ($(date -u +%Y-%m-%d))" --label update-watch --body-file "$report"
+          fi
+
+      - name: Save the new state
+        run: |
+          git diff --quiet -- .github/update-watch/state.json && exit 0
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "Update watch: save state" -- .github/update-watch/state.json
+          git push

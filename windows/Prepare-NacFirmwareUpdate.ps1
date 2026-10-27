@@ -57,8 +57,10 @@ $UpdateId        = "001315031692686757"
 
 $FirmwareUrl      = "https://majestic-web.mpsa.com/nas/eu/mjb00/PSA/mjbsu/PSA_ovip-int-firmware-version_44-07-33-32_NAC-r0_NAC_EUR_WAVE4.tar"
 $FirmwareFilename = "PSA_ovip-int-firmware-version_44-07-33-32_NAC-r0_NAC_EUR_WAVE4.tar"
+# Fallback: the CDN the official apps use. It served a broken, smaller file
+# from Feb to Oct 2026; Test-Firmware rejects that one by its size.
 $FallbackUrls     = @(
-    "https://majestic-web.mpsa.com/nas/eu/mjb00/NAC_EU/ovip-int-firmware-version/PSA_ovip-int-firmware-version_44-07-33-32_NAC-r0_NAC_EUR_WAVE4.tar"
+    "https://ds4emloty3shq.cloudfront.net/CONTINENTAL/NAC_EU/ovip-int-firmware-version/PSA_ovip-int-firmware-version_44-07-33-32_NAC-r0_NAC_EUR_WAVE4.tar"
 )
 
 $ExpectedSize = 6312212480

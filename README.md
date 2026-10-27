@@ -114,6 +114,10 @@ They cover USB drive selection, archive validation, extraction, download resume 
 
 In addition, the Windows scripts were checked by hand in a Windows 11 VM (PowerShell 5.1): formatting and extraction on a real USB stick, and real downloads from the Stellantis and TomTom servers, interrupted and resumed. The macOS firmware and map scripts from this fork were also used for a full install in a car (see [Use at your own risk](#use-at-your-own-risk)); the Windows scripts from this fork have not been used in a car yet.
 
+### Update watch
+
+Once a week a [GitHub Action](.github/workflows/update-watch.yml) runs [tools/check_updates.py](tools/check_updates.py). It reads [rui.saraiva's tracker](https://sites.google.com/view/nac-rcc/system/nac/wave-4) and its changelog, and checks that every download URL in the scripts still answers with the expected size. When a new firmware or map shows up, a file changes size, a URL stops working or the tracker can't be read, it opens an issue labelled `update-watch`. Watch this repository on GitHub to get notified.
+
 ---
 
 ## License
