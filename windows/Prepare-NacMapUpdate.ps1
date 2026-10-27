@@ -168,16 +168,23 @@ function Format-UsbDrive {
     Write-Info "Cleaning disk $($Disk.Number)..."
     Clear-Disk -Number $Disk.Number -RemoveData -RemoveOEM -Confirm:$false -ErrorAction SilentlyContinue
 
-    # USB controllers can be slow to report the disk as truly uninitialized (RAW)
-    # right after Clear-Disk. Give it a moment and re-check before initializing.
+    # Clear-Disk can leave the disk initialized; wipe the partition table reliably.
+    $cleanScript = @"
+select disk $($Disk.Number)
+clean
+"@
+    $cleanScript | diskpart.exe | Out-Null
     Start-Sleep -Seconds 2
-    $diskInfo = Get-Disk -Number $Disk.Number
 
     Write-Info "Initializing with MBR partition table..."
-    if ($diskInfo.PartitionStyle -eq 'RAW') {
+    try {
         Initialize-Disk -Number $Disk.Number -PartitionStyle MBR -ErrorAction Stop
-    } else {
-        Write-Info "Disk already has a partition table ($($diskInfo.PartitionStyle)) after clearing — reusing it."
+    } catch {
+        # Disk may already be initialized (e.g. Windows re-mounted it after the
+        # clean). Fall back to setting the partition style rather than failing
+        # with "The disk has already been initialized".
+        Write-Info "Disk already initialized; ensuring MBR partition style..."
+        Set-Disk -Number $Disk.Number -PartitionStyle MBR -ErrorAction SilentlyContinue
     }
 
     Write-Info "Creating FAT32 partition..."

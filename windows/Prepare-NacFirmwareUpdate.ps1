@@ -557,7 +557,9 @@ function Expand-ToUsb {
     } -ArgumentList $TarPath, $UsbRoot
 
     try {
-        while ($job.State -eq 'Running') {
+        # A freshly started job can briefly report 'NotStarted'; treat that as
+        # running too, or the finally block would kill tar mid-extraction.
+        while ($job.State -in 'NotStarted', 'Running') {
             $written = 0
             if (Test-Path $swlPath) {
                 $measure = Get-ChildItem -Path $swlPath -Recurse -File -ErrorAction SilentlyContinue |
