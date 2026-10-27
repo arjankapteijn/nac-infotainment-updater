@@ -129,7 +129,12 @@ def main(state_path, report_path):
 
     expected = script_urls()
     for url, size in expected.items():
-        new["urls"][url] = probe(url)
+        result = probe(url)
+        # The official apps' CDN only serves Europe and answers 403 to the
+        # (US) GitHub runners, so a 403 there says nothing; keep the last value.
+        if "cloudfront" in url and result.startswith("403"):
+            result = old.get("urls", {}).get(url, result)
+        new["urls"][url] = result
     primaries = {u for u in expected if "cloudfront" not in u and "download.tomtom.com" not in u}
     for url in sorted(primaries):
         want = f"200 {expected[url]}"
