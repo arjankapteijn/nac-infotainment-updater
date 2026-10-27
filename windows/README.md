@@ -197,7 +197,7 @@ Screenshots of the confirmed working install are in [hjertmann/nac-infotainment-
 
 | Cause | Fix |
 |---|---|
-| You used the official Update app | The CloudFront file is broken since Feb 2026. Use this script instead |
+| You used the official Update app | The CloudFront file was broken from Feb to Oct 2026 and may be fixed now. Use this script instead |
 | License file missing or invalid | The script handles this, but connect the car to WiFi as backup |
 | NAC needs a reset | Hold the power/volume button on the NAC for 10+ seconds |
 | USB drive issues | Try a different drive. Some NAC units are picky about brands |
@@ -279,6 +279,8 @@ The NAC firmware update process requires:
 ### Why the official app fails
 
 Since February 4, 2026, Stellantis uploaded a new firmware to their CloudFront CDN (6,312,210,432 bytes) that is improperly signed. The official Update apps download from this CDN. The previous valid version (6,312,212,480 bytes) remains available on their majestic-web.mpsa.com server. These scripts download from the working server.
+
+**Update (October 21, 2026):** according to [rui.saraiva's tracker](https://sites.google.com/view/nac-rcc/changelog), 44.07.33.32 is back at its original size of 6,312,212,480 bytes, so the broken file may have been replaced. This hasn't been confirmed by an install with the official app yet. The scripts keep working either way, and they still check that the downloaded file has the known-good size.
 
 ---
 

@@ -184,7 +184,7 @@ bash prepare_nac_map_update_mac.sh --skip-format                # don't reformat
 
 | Cause | Fix |
 |---|---|
-| You used the official Citroën/Peugeot Update app | The CloudFront file is broken since Feb 2026. Use this script instead — it downloads from the working server |
+| You used the official Citroën/Peugeot Update app | The CloudFront file was broken from Feb to Oct 2026 and may be fixed now. Use this script instead — it downloads from the working server |
 | License file missing or invalid | The script handles this, but make sure the car has WiFi as backup |
 | NAC needs a reset | Hold the power/volume button on the NAC panel for 10+ seconds |
 | USB drive issues | Try a different USB drive. Some NAC units are picky |
@@ -236,6 +236,8 @@ The "incompatible hardware" error is a generic catch-all that can mean: bad arch
 ### Why the official app fails
 
 Since February 4, 2026, Stellantis uploaded a new version of the firmware to their CloudFront CDN (6,312,210,432 bytes) that is improperly signed. The Citroën/Peugeot/DS/Opel Update apps download from this CDN. However, the previous valid version (6,312,212,480 bytes) is still available on their majestic-web.mpsa.com server at a different path. These scripts download from the working server.
+
+**Update (October 21, 2026):** according to [rui.saraiva's tracker](https://sites.google.com/view/nac-rcc/changelog), 44.07.33.32 is back at its original size of 6,312,212,480 bytes, so the broken file may have been replaced. This hasn't been confirmed by an install with the official app yet. The scripts keep working either way, and they still check that the downloaded file has the known-good size.
 
 ---
 
