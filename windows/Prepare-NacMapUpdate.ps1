@@ -3,7 +3,7 @@
     NAC Wave 4 Map Update - USB Preparation Script (Windows 10/11)
 
 .DESCRIPTION
-    Prepares a USB drive with the latest European cartography (map-eur 17.0.0-r0)
+    Prepares a USB drive with the latest European cartography (map-eur 21.0.0-r0)
     for PSA/Stellantis vehicles with NAC Wave 4 infotainment.
 
     Map updates do NOT require a license file or UIN.
@@ -38,13 +38,13 @@ if (-not $isAdmin) {
 }
 
 # ── Configuration ──────────────────────────────────────────────────────────
-$MapVersion   = "17.0.0-r0"
-$MapUrl       = "https://download-cde.tomtom.com/OEM/PSA/MAP/PSA_map-eur_17.0.0-r0-NAC_EUR_WAVE4.tar"
-$MapFilename  = "PSA_map-eur_17.0.0-r0-NAC_EUR_WAVE4.tar"
+$MapVersion   = "21.0.0-r0"
+$MapUrl       = "https://download-cde.tomtom.com/OEM/PSA/MAP/PSA_map-eur_21.0.0-r0-NAC_EUR_WAVE4.tar"
+$MapFilename  = "PSA_map-eur_21.0.0-r0-NAC_EUR_WAVE4.tar"
 $FallbackUrls = @(
-    "http://download.tomtom.com/OEM/PSA/MAP/PSA_map-eur_17.0.0-r0-NAC_EUR_WAVE4.tar"
+    "http://download.tomtom.com/OEM/PSA/MAP/PSA_map-eur_21.0.0-r0-NAC_EUR_WAVE4.tar"
 )
-$ExpectedSize = 20403312640
+$ExpectedSize = 19021742080
 
 $MaxRetries     = 50
 $RetryDelayBase = 5
@@ -61,7 +61,7 @@ function Write-Header  { param($Msg) Write-Host "`n── $Msg ──`n" -Foregr
 function Test-FirmwarePrerequisite {
     Write-Header "Firmware Prerequisite Check"
 
-    Write-Host "  This map update (17.0.0-r0) requires NAC Wave 4 firmware."
+    Write-Host "  This map update (21.0.0-r0) requires NAC Wave 4 firmware."
     Write-Host "  Compatible firmware versions: 42.x or 44.x (Wave 4)"
     Write-Host ""
     Write-Host "  If you're not sure, check on the NAC screen:"
