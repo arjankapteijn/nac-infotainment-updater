@@ -15,7 +15,7 @@ jobs:
   check:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Check tracker and download URLs
         run: python3 tools/check_updates.py .github/update-watch/state.json "$RUNNER_TEMP/report.md"

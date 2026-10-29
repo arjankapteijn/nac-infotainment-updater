@@ -8,14 +8,14 @@ jobs:
   macos:
     runs-on: macos-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Run macOS script tests
         run: bash tests/macos/run_tests.sh
 
   windows:
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Run Windows script tests (Windows PowerShell 5.1)
         shell: powershell
         run: .\tests\windows\Run-Tests.ps1
