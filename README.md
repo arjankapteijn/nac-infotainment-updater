@@ -13,6 +13,8 @@
 > - European map updated to `21.0.0-r0` — [#1](https://github.com/hjertmann/nac-infotainment-updater/issues/1)
 > - Windows fixes for single-USB selection, disk initialization, BITS without Range support, the false "archive corrupted" report and UTF-8 parsing, from [#7](https://github.com/hjertmann/nac-infotainment-updater/pull/7) by [@ac-uy](https://github.com/ac-uy) and [#5](https://github.com/hjertmann/nac-infotainment-updater/pull/5) by [@akarshvijayan](https://github.com/akarshvijayan)
 > - The Windows map script no longer leaves a background BITS download running after you abort it
+> - The firmware script checks a SHA-256 of the first MiB, because the broken CloudFront file has had the same size as the good one since October 21, 2026
+> - Map cleanup, the "No media content" message and the BSI reset advice corrected, thanks to feedback from Rui Saraiva
 > - Automated tests for both platforms, run on every push — see [Testing](#testing)
 
 Scripts to prepare a USB drive for updating the Continental NAC Wave 4 infotainment system found in Peugeot, Citroën, DS, and Opel/Vauxhall vehicles (~2017 onwards).
@@ -21,9 +23,9 @@ Scripts to prepare a USB drive for updating the Continental NAC Wave 4 infotainm
 
 ## Why this exists
 
-The official Citroën/Peugeot/DS/Opel Update apps are supposed to do exactly what these scripts do: download the firmware and map files from Stellantis's servers and prepare a USB drive for installation. Since February 4, 2026, the official apps have been downloading a broken firmware file from Stellantis's CloudFront CDN that fails with a **"Version not compatible with hardware"** error. On October 21, 2026 the file went back to its original, working size (see [rui.saraiva's tracker](https://sites.google.com/view/nac-rcc/changelog)), so the official apps may work again; this hasn't been confirmed yet.
+The official Citroën/Peugeot/DS/Opel Update apps are supposed to do exactly what these scripts do: download the firmware and map files from Stellantis's servers and prepare a USB drive for installation. Since February 4, 2026, the official apps have been downloading a broken firmware file from Stellantis's CloudFront CDN that fails with a **"Version not compatible with hardware"** error. On October 21, 2026 that file was repacked to the same size as the good one, but it still has invalid certificates, so the official apps still fail.
 
-These scripts do what the vendor updater was supposed to do — nothing more. They download from Stellantis's own `majestic-web.mpsa.com` server (firmware/licenses) and TomTom's CDN (maps), structure the USB drive exactly as the NAC expects, and clean up macOS metadata files that can interfere with the install.
+These scripts do what the vendor updater was supposed to do — nothing more. They download from Stellantis's own `majestic-web.mpsa.com` server (firmware/licenses) and TomTom's CDN (maps), structure the USB drive exactly as the NAC expects, and, for map updates on macOS, remove the macOS files that would break the install.
 
 **This project does not circumvent any DRM, licensing restrictions, or access controls.** All files are downloaded from official Stellantis and TomTom servers using the same API endpoints the official apps use. The license file for your specific NAC unit is fetched from Stellantis's own licensing API using your unit's UIN — the same process the official app performs.
 

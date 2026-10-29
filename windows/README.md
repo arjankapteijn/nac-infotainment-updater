@@ -197,16 +197,14 @@ Screenshots of the confirmed working install are in [hjertmann/nac-infotainment-
 
 | Cause | Fix |
 |---|---|
-| You used the official Update app | The CloudFront file was broken from Feb to Oct 2026 and may be fixed now. Use this script instead |
+| You used the official Update app | The CloudFront file has invalid certificates (since Feb 2026, repacked to the same size in Oct 2026). Use this script instead |
 | License file missing or invalid | The script handles this, but connect the car to WiFi as backup |
 | NAC needs a reset | Hold the power/volume button on the NAC for 10+ seconds |
 | USB drive issues | Try a different drive. Some NAC units are picky about brands |
 
 ### "No media content on the USB memory stick"
 
-- The USB must be **FAT32** with an **MBR** partition table (the script handles this)
-- The `SWL` folder and `UpdateInfo.xml` must be in the root of the USB
-- If you formatted the drive yourself, Windows may have used GPT instead of MBR — let the script handle formatting
+This is expected and harmless: it only means the stick has no music or video files on it. Ignore it; the update itself is not affected.
 
 ### FAT32 formatting issues on large drives
 
@@ -244,14 +242,9 @@ Start-BitsTransfer -Source "https://download-cde.tomtom.com/OEM/PSA/MAP/PSA_map-
 
 Then pass them to the scripts with `-TarFile "path\to\file.tar"`.
 
-### BSI Reset (last resort)
+### BSI reset
 
-If nothing works:
-
-1. Turn the car off
-2. Disconnect the 12V battery for 15 minutes
-3. Reconnect the battery
-4. Start the car and try again
+A BSI reset is rarely needed for a firmware or map update. If you do need one, don't just disconnect the 12V battery: the car's control units must be asleep first, or you risk new problems. Follow the full procedure on the French Car Forum: [BSI reset and battery disconnection](https://frenchcarforum.co.uk/forum/viewtopic.php?t=61997).
 
 ### Windows 11 / PowerShell 5.1 gotchas
 
@@ -280,7 +273,7 @@ The NAC firmware update process requires:
 
 Since February 4, 2026, Stellantis uploaded a new firmware to their CloudFront CDN (6,312,210,432 bytes) that is improperly signed. The official Update apps download from this CDN. The previous valid version (6,312,212,480 bytes) remains available on their majestic-web.mpsa.com server. These scripts download from the working server.
 
-**Update (October 21, 2026):** according to [rui.saraiva's tracker](https://sites.google.com/view/nac-rcc/changelog), 44.07.33.32 is back at its original size of 6,312,212,480 bytes, so the broken file may have been replaced. This hasn't been confirmed by an install with the official app yet. The scripts keep working either way, and they still check that the downloaded file has the known-good size.
+**Update (October 21, 2026):** the CloudFront file was repacked and now has the same size as the good one (6,312,212,480 bytes), but it still has invalid certificates (confirmed by Rui Saraiva), so the official apps still fail. Because the size no longer tells the files apart, the firmware script also checks a SHA-256 of the first MiB of the file and refuses the CloudFront one.
 
 ---
 

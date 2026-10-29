@@ -111,6 +111,23 @@ for pair in "$FIRMWARE:validate_firmware" "$MAP:validate_map"; do
     check "$name: $fn rejects an archive without SWL/" eval 'exited 1 && says "No SWL/"'
 done
 
+# ── Known-good checksum (firmware script only) ──────────────────────────────
+good_size=$(wc -c < "$WORK/good.tar" | tr -d ' ')
+good_head=$(head -c 1048576 "$WORK/good.tar" | shasum -a 256 | cut -d' ' -f1)
+run_in "$FIRMWARE" "EXPECTED_SIZE=$good_size; EXPECTED_HEAD_SHA256=$good_head; validate_firmware '$WORK/good.tar'"
+check "firmware: accepts the known-good file by size and checksum" eval 'exited 0 && says "checksum match"'
+run_in "$FIRMWARE" "EXPECTED_SIZE=$good_size; EXPECTED_HEAD_SHA256=0000; validate_firmware '$WORK/good.tar'"
+check "firmware: rejects a same-size file with another checksum" eval 'exited 1 && says "not the known-good file"'
+
+# ── Map folder cleanup (map script only) ────────────────────────────────────
+mapdir="$WORK/usbmap/SWL/002000/Data/data-pkg/NAV/MAP"
+rm -rf "$WORK/usbmap"; mkdir -p "$mapdir/sub" "$WORK/usbmap/SWL/other"
+touch "$mapdir"/{a.ttpkg,._a.ttpkg,.DS_Store} "$mapdir"/sub/{b.ttpkg,._b.ttpkg} "$WORK/usbmap/SWL/other/keep.txt"
+run_in "$MAP" "clean_artifacts '$WORK/usbmap'"
+left=$(cd "$WORK/usbmap" && find . -type f | sort | tr '\n' ' ')
+check "map: cleanup leaves only .ttpkg packages in NAV/MAP" \
+    eval '[[ "$left" == "./SWL/002000/Data/data-pkg/NAV/MAP/a.ttpkg ./SWL/002000/Data/data-pkg/NAV/MAP/sub/b.ttpkg ./SWL/other/keep.txt " ]]'
+
 # ── Download and resume ─────────────────────────────────────────────────────
 for script in "$FIRMWARE" "$MAP"; do
     name="$(basename "$script")"

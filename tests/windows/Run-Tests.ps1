@@ -73,6 +73,8 @@ $cases = @(
     @{ Case = 'tar-good';         Exit = 0; Expect = 'passed';                Name = 'accepts a valid archive' },
     @{ Case = 'tar-truncated';    Exit = 1; Expect = 'corrupted';             Name = 'rejects a truncated archive' },
     @{ Case = 'tar-noswl';        Exit = 1; Expect = 'No SWL';                Name = 'rejects an archive without SWL/' },
+    @{ Case = 'tar-head-good';    Exit = 0; Expect = 'passed';                Name = 'accepts the known-good file by size and checksum'; Only = 'Firmware' },
+    @{ Case = 'tar-head-bad';     Exit = 1; Expect = 'not the known-good file'; Name = 'rejects a same-size file with another checksum'; Only = 'Firmware' },
     @{ Case = 'extract';          Exit = 0; Expect = 'files=3001 expected=3001'; Name = 'extracts every file' },
     @{ Case = 'download-fresh';   Exit = 0; Expect = 'ok=True identical=True'; Name = 'fresh download is complete' },
     @{ Case = 'download-resume';  Exit = 0; Expect = 'ok=True identical=True'; Name = 'resumes a partial download' },
@@ -95,6 +97,7 @@ try {
         $leaf = Split-Path $s -Leaf
         foreach ($c in $cases) {
             $name = "${leaf}: $($c.Name)"
+            if ($c.Only -and $leaf -notlike "*$($c.Only)*") { continue }
             if ($c.Admin -and -not $isAdmin) { Write-Host "skip - $name (needs Administrator)"; $script:skipped++; continue }
 
             if ($c.Case -eq 'format-vhd') {

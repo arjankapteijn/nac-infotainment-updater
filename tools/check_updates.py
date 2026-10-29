@@ -79,13 +79,15 @@ def script_urls():
 
 
 def probe(url):
-    """'<status> <size>' for a URL, without downloading it."""
+    """'<status> <size> <etag>' for a URL, without downloading it. The ETag
+    catches a re-upload that keeps the same size, like CloudFront's in Oct 2026."""
     for method, headers in (("HEAD", {}), ("GET", {"Range": "bytes=0-0"})):
         req = urllib.request.Request(url, method=method, headers={"User-Agent": USER_AGENT, **headers})
         try:
             with urllib.request.urlopen(req, timeout=60) as resp:
                 total = resp.headers.get("Content-Range", "").rpartition("/")[2] or resp.headers.get("Content-Length", "?")
-                return f"200 {total}"
+                etag = resp.headers.get("ETag", "-").replace(" ", "")
+                return f"200 {total} {etag}"
         except urllib.error.HTTPError as e:
             if method == "GET" or e.code not in (403, 405):
                 return f"{e.code} -"
@@ -138,7 +140,7 @@ def main(state_path, report_path):
     primaries = {u for u in expected if "cloudfront" not in u and "download.tomtom.com" not in u}
     for url in sorted(primaries):
         want = f"200 {expected[url]}"
-        if expected[url] and new["urls"][url] != want:
+        if expected[url] and not new["urls"][url].startswith(want + " "):
             problems.append(f"`{url}` answers `{new['urls'][url]}`, expected `{want}`.")
 
     # Keep the last good tracker data when the tracker could not be read,

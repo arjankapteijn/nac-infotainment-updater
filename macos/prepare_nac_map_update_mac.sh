@@ -439,15 +439,13 @@ clean_artifacts() {
 
     header "Cleaning macOS Artifacts"
 
-    find "$dest" -name ".DS_Store" -delete 2>/dev/null || true
-    find "$dest" -name "._*" -delete 2>/dev/null || true
-    find "$dest" -name ".Spotlight-V100" -exec rm -rf {} + 2>/dev/null || true
-    find "$dest" -name ".Trashes" -exec rm -rf {} + 2>/dev/null || true
-    find "$dest" -name ".fseventsd" -exec rm -rf {} + 2>/dev/null || true
-    find "$dest" -name "__MACOSX" -exec rm -rf {} + 2>/dev/null || true
-    touch "${dest}/.metadata_never_index" 2>/dev/null || true
+    # The NAV/MAP folder must hold nothing but .ttpkg packages; macOS adds ._*
+    # files there when extracting to FAT32. Nothing else on the stick matters
+    # (advice from Rui Saraiva). "._*" is listed separately because the
+    # AppleDouble file of a package (._x.ttpkg) also ends in .ttpkg.
+    find "$dest"/SWL/002*/Data/data-pkg/NAV/MAP/ -type f \( ! -name "*.ttpkg" -o -name "._*" \) -delete 2>/dev/null || true
 
-    success "Cleaned macOS system files."
+    success "Cleaned macOS files from the map folder."
 }
 
 # ── Summary ────────────────────────────────────────────────────────────────
@@ -576,7 +574,6 @@ main() {
 
     validate_map "$tar_file"
     extract_to_usb "$tar_file" "$USB_MOUNT"
-    clean_artifacts "$USB_MOUNT"
 
     # Flush writes
     info "Flushing writes to disk..."
@@ -591,15 +588,8 @@ main() {
         USB_MOUNT="/Volumes/NAC_MAP"
     fi
 
-    # Final artifact clean after remount
-    if [[ -d "$USB_MOUNT" ]]; then
-        find "$USB_MOUNT" -name ".DS_Store" -delete 2>/dev/null || true
-        find "$USB_MOUNT" -name "._*" -delete 2>/dev/null || true
-        find "$USB_MOUNT" -name ".Spotlight-V100" -exec rm -rf {} + 2>/dev/null || true
-        find "$USB_MOUNT" -name ".Trashes" -exec rm -rf {} + 2>/dev/null || true
-        find "$USB_MOUNT" -name ".fseventsd" -exec rm -rf {} + 2>/dev/null || true
-        touch "${USB_MOUNT}/.metadata_never_index" 2>/dev/null || true
-    fi
+    # Clean after the remount, so nothing macOS writes on mount is left behind
+    clean_artifacts "$USB_MOUNT"
 
     print_summary "$USB_MOUNT"
 

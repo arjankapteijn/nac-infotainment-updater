@@ -57,13 +57,17 @@ $UpdateId        = "001315031692686757"
 
 $FirmwareUrl      = "https://majestic-web.mpsa.com/nas/eu/mjb00/PSA/mjbsu/PSA_ovip-int-firmware-version_44-07-33-32_NAC-r0_NAC_EUR_WAVE4.tar"
 $FirmwareFilename = "PSA_ovip-int-firmware-version_44-07-33-32_NAC-r0_NAC_EUR_WAVE4.tar"
-# Fallback: the CDN the official apps use. It served a broken, smaller file
-# from Feb to Oct 2026; Test-Firmware rejects that one by its size.
-$FallbackUrls     = @(
-    "https://ds4emloty3shq.cloudfront.net/CONTINENTAL/NAC_EU/ovip-int-firmware-version/PSA_ovip-int-firmware-version_44-07-33-32_NAC-r0_NAC_EUR_WAVE4.tar"
-)
+# No fallback URL. The other majestic-web path is gone (404), and the CDN the
+# official apps use serves a file with invalid certificates. Since Oct 21, 2026
+# that file even has the same size as the good one, so the size check can't
+# catch it.
 
 $ExpectedSize = 6312212480
+
+# SHA-256 of the first MiB of the valid file. The official apps' CDN serves a
+# repacked file with invalid certificates that has the same size since
+# Oct 21, 2026; its first MiB differs.
+$ExpectedHeadSha256 = "3558c4c91a70b3689fdd999d276ee7a720874d3a3660c9b2ab1a322c550ca551"
 
 $MaxRetries     = 50
 $RetryDelayBase = 5
@@ -420,17 +424,7 @@ function Download-Firmware {
         return
     }
 
-    Write-Warn "Primary URL failed. Trying fallback..."
-    foreach ($url in $FallbackUrls) {
-        if (Test-Path $Dest) { Remove-Item $Dest -Force }
-        Write-Info "Trying: $url"
-        if (Download-WithResume -Url $url -Dest $Dest -ExpSize $ExpectedSize) {
-            Write-Ok "Download complete."
-            return
-        }
-    }
-
-    Write-Err "All download URLs failed after $MaxRetries retries."
+    Write-Err "Download failed after $MaxRetries retries."
     Write-Host ""
     Write-Host "  Your partial download is kept at: $Dest"
     Write-Host "  Download manually from rui.saraiva's site:"
@@ -441,6 +435,19 @@ function Download-Firmware {
 }
 
 # ── Validate firmware ──────────────────────────────────────────────────────
+function Get-HeadSha256 {
+    param([string]$Path)
+    $stream = [System.IO.File]::OpenRead($Path)
+    try {
+        $buffer = New-Object byte[] 1048576
+        $read = $stream.Read($buffer, 0, $buffer.Length)
+        $sha = [System.Security.Cryptography.SHA256]::Create()
+        -join ($sha.ComputeHash($buffer, 0, $read) | ForEach-Object { $_.ToString('x2') })
+    } finally {
+        $stream.Close()
+    }
+}
+
 function Test-Firmware {
     param([string]$Path)
 
@@ -450,7 +457,16 @@ function Test-Firmware {
     Write-Info "File size: $size bytes"
 
     if ($size -eq $ExpectedSize) {
-        Write-Ok "Size matches the known-good version ($ExpectedSize bytes)."
+        if ((Get-HeadSha256 -Path $Path) -ne $ExpectedHeadSha256) {
+            Write-Err "Right size, but this is not the known-good file."
+            Write-Host ""
+            Write-Host "  This is most likely the repacked file from the official Update app"
+            Write-Host "  (CloudFront), which still has invalid certificates and fails with"
+            Write-Host "  'Version not compatible with hardware'."
+            Write-Host "  Re-run this script without -TarFile to download the correct file."
+            exit 1
+        }
+        Write-Ok "Size and checksum match the known-good version ($ExpectedSize bytes)."
     } elseif ($size -eq 6312210432) {
         Write-Host ""
         Write-Err "THIS IS THE BROKEN CLOUDFRONT FILE!"
@@ -632,7 +648,6 @@ function Show-Summary {
     Write-Host "  Troubleshooting:" -ForegroundColor Yellow
     Write-Host "    - Hold NAC power/volume button 10+ sec to reset"
     Write-Host "    - Try a different USB drive"
-    Write-Host "    - BSI reset: disconnect 12V battery 15 min, reconnect"
     Write-Host ""
     Write-Host "  Community: https://www.mittns.de/  |  https://www.peugeotforums.com/"
     Write-Host ""

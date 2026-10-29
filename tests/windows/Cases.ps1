@@ -61,6 +61,13 @@ switch ($Case) {
     'tar-good'      { Test-ArchiveFile "$Work\good.tar";      Write-Host 'RESULT passed' }
     'tar-truncated' { Test-ArchiveFile "$Work\truncated.tar"; Write-Host 'RESULT passed' }
     'tar-noswl'     { Test-ArchiveFile "$Work\noswl.tar";     Write-Host 'RESULT passed' }
+    { $_ -like 'tar-head-*' } {
+        # Same size as the expected file; only the first-MiB checksum decides
+        $ExpectedSize = (Get-Item "$Work\good.tar").Length
+        $ExpectedHeadSha256 = if ($Case -eq 'tar-head-good') { Get-HeadSha256 -Path "$Work\good.tar" } else { '0000' }
+        Test-Firmware -Path "$Work\good.tar"
+        Write-Host 'RESULT passed'
+    }
     'extract' {
         $dest = Join-Path $Work ("usb-" + [guid]::NewGuid().ToString('N').Substring(0, 8))
         New-Item -ItemType Directory $dest | Out-Null

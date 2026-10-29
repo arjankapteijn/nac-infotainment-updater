@@ -47,11 +47,15 @@ FIRMWARE_FILENAME="PSA_ovip-int-firmware-version_44-07-33-32_NAC-r0_NAC_EUR_WAVE
 # Expected size of the VALID firmware file
 EXPECTED_SIZE=6312212480
 
-# Fallback URL: the CDN the official apps use. It served a broken, smaller file
-# from Feb to Oct 2026; validate_firmware rejects that one by its size.
-FALLBACK_URLS=(
-    "https://ds4emloty3shq.cloudfront.net/CONTINENTAL/NAC_EU/ovip-int-firmware-version/PSA_ovip-int-firmware-version_44-07-33-32_NAC-r0_NAC_EUR_WAVE4.tar"
-)
+# SHA-256 of the first MiB of the valid file. The official apps' CDN serves a
+# repacked file with invalid certificates that has the same size since
+# Oct 21, 2026; its first MiB differs.
+EXPECTED_HEAD_SHA256="3558c4c91a70b3689fdd999d276ee7a720874d3a3660c9b2ab1a322c550ca551"
+
+# No fallback URL. The other majestic-web path is gone (404), and the CDN the
+# official apps use serves a file with invalid certificates. Since Oct 21, 2026
+# that file even has the same size as the good one, so the size check can't
+# catch it.
 
 # License URL is constructed dynamically after UIN is provided
 
@@ -384,18 +388,7 @@ download_firmware() {
         return 0
     fi
 
-    warn "Primary URL exhausted retries. Trying fallback URL..."
-    for url in "${FALLBACK_URLS[@]}"; do
-        # Start fresh for a different URL (byte ranges might differ)
-        rm -f "$tar_path"
-        info "Trying: $url"
-        if download_with_resume "$url" "$tar_path"; then
-            success "Download complete."
-            return 0
-        fi
-    done
-
-    error "All download URLs failed after ${MAX_RETRIES} retries each."
+    error "Download failed after ${MAX_RETRIES} retries."
     echo ""
     echo "  Your partial download is kept at: ${tar_path}"
     echo "  You can resume manually with:"
@@ -420,7 +413,18 @@ validate_firmware() {
     info "File size: ${actual_size} bytes"
 
     if [[ "$actual_size" -eq "$EXPECTED_SIZE" ]]; then
-        success "Size matches the known-good version (${EXPECTED_SIZE} bytes). This is the correct file."
+        local head_sha
+        head_sha=$(head -c 1048576 "$tar_path" | shasum -a 256 | cut -d' ' -f1)
+        if [[ "$head_sha" != "$EXPECTED_HEAD_SHA256" ]]; then
+            error "Right size, but this is not the known-good file."
+            echo ""
+            echo "  This is most likely the repacked file from the official Update app"
+            echo "  (CloudFront), which still has invalid certificates and fails with"
+            echo "  'Version not compatible with hardware'."
+            echo "  Re-run this script without --tar to download the correct file."
+            exit 1
+        fi
+        success "Size and checksum match the known-good version (${EXPECTED_SIZE} bytes). This is the correct file."
     elif [[ "$actual_size" -eq 6312210432 ]]; then
         echo ""
         error "╔══════════════════════════════════════════════════════════╗"
@@ -545,28 +549,6 @@ extract_to_usb() {
     fi
 }
 
-# ── Clean macOS artifacts ──────────────────────────────────────────────────
-clean_artifacts() {
-    local dest="$1"
-
-    header "Cleaning macOS Artifacts"
-
-    info "Removing .DS_Store, .Spotlight, .Trashes, .fseventsd, ._* files..."
-
-    # These macOS metadata files are known to break NAC firmware installs
-    find "$dest" -name ".DS_Store" -delete 2>/dev/null || true
-    find "$dest" -name "._*" -delete 2>/dev/null || true
-    find "$dest" -name ".Spotlight-V100" -exec rm -rf {} + 2>/dev/null || true
-    find "$dest" -name ".Trashes" -exec rm -rf {} + 2>/dev/null || true
-    find "$dest" -name ".fseventsd" -exec rm -rf {} + 2>/dev/null || true
-    find "$dest" -name "__MACOSX" -exec rm -rf {} + 2>/dev/null || true
-
-    # Prevent Spotlight from re-indexing the USB
-    touch "${dest}/.metadata_never_index" 2>/dev/null || true
-
-    success "Cleaned. Also placed .metadata_never_index to prevent Spotlight."
-}
-
 # ── Summary ────────────────────────────────────────────────────────────────
 print_summary() {
     local dest="$1"
@@ -623,7 +605,6 @@ print_summary() {
     echo "  • Hold the NAC power/volume button 10+ seconds to reset it"
     echo "  • Connect car to WiFi/hotspot before inserting USB"
     echo "  • Try a different USB drive (some units are picky)"
-    echo "  • Try a BSI reset: disconnect 12V battery 15 min, reconnect"
     echo ""
     echo "  Community help:"
     echo "    https://www.mittns.de/"
@@ -729,7 +710,8 @@ main() {
         has_license="true"
     fi
 
-    clean_artifacts "$USB_MOUNT"
+    # No macOS metadata cleanup: it's only needed for map updates
+    # (see prepare_nac_map_update_mac.sh).
 
     # Flush writes
     info "Flushing writes to disk..."
@@ -744,16 +726,6 @@ main() {
     USB_MOUNT=$(diskutil info "${DISK_ID}s1" 2>/dev/null | grep "Mount Point" | sed 's/.*: *//' || echo "")
     if [[ -z "$USB_MOUNT" ]]; then
         USB_MOUNT="/Volumes/NAC_UPDATE"
-    fi
-
-    # One final clean of any macOS files created during remount
-    if [[ -d "$USB_MOUNT" ]]; then
-        find "$USB_MOUNT" -name ".DS_Store" -delete 2>/dev/null || true
-        find "$USB_MOUNT" -name "._*" -delete 2>/dev/null || true
-        find "$USB_MOUNT" -name ".Spotlight-V100" -exec rm -rf {} + 2>/dev/null || true
-        find "$USB_MOUNT" -name ".Trashes" -exec rm -rf {} + 2>/dev/null || true
-        find "$USB_MOUNT" -name ".fseventsd" -exec rm -rf {} + 2>/dev/null || true
-        touch "${USB_MOUNT}/.metadata_never_index" 2>/dev/null || true
     fi
 
     print_summary "$USB_MOUNT" "$has_license"
