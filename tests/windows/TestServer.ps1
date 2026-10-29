@@ -11,6 +11,9 @@ $listener = [System.Net.Sockets.TcpListener]::new([System.Net.IPAddress]::Loopba
 $listener.Start()
 
 while ($true) {
+    # Poll instead of blocking in AcceptTcpClient(): Stop-Job can't interrupt a
+    # blocking .NET call, which made the cleanup hang for minutes.
+    while (-not $listener.Pending()) { Start-Sleep -Milliseconds 50 }
     $client = $listener.AcceptTcpClient()
     try {
         $stream = $client.GetStream()
