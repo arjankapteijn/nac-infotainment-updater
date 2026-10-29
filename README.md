@@ -23,7 +23,7 @@ Scripts to prepare a USB drive for updating the Continental NAC Wave 4 infotainm
 
 ## Why this exists
 
-The official Citroën/Peugeot/DS/Opel Update apps are supposed to do exactly what these scripts do: download the firmware and map files from Stellantis's servers and prepare a USB drive for installation. Since February 4, 2026, the official apps have been downloading a broken firmware file from Stellantis's CloudFront CDN that fails with a **"Version not compatible with hardware"** error. On October 21, 2026 that file was repacked to the same size as the good one, but it still has invalid certificates, so the official apps still fail.
+The official Citroën/Peugeot/DS/Opel Update apps are supposed to do exactly what these scripts do: download the firmware and map files from Stellantis's servers and prepare a USB drive for installation. Since February 4, 2026, the official apps have been downloading a broken firmware file from Stellantis's CloudFront CDN that fails with a **"Version not compatible with hardware"** error. On October 21, 2026 that file was repacked to the same size as the good one, but it still has invalid certificates. Those are inside the archive, not in the license file, so a valid license doesn't help and the official apps still fail.
 
 These scripts do what the vendor updater was supposed to do — nothing more. They download from Stellantis's own `majestic-web.mpsa.com` server (firmware/licenses) and TomTom's CDN (maps), structure the USB drive exactly as the NAC expects, and, for map updates on macOS, remove the macOS files that would break the install.
 

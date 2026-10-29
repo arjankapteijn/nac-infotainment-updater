@@ -265,9 +265,11 @@ The `windows/` scripts were previously **untested** on real hardware. The follow
 
 The NAC firmware update process requires:
 
-1. **The firmware archive** — a `.tar` file containing an `SWL` folder with signed firmware packages. The same archive works for all NAC Wave 4 units
+1. **The firmware archive** — a `.tar` file containing an `SWL` folder with signed firmware packages and the certificates they are signed with. The same archive works for all NAC Wave 4 units
 2. **A license file** — a PKCS#7 encrypted file specific to your unit (UIN) and firmware version (UpdateID). Downloaded from Stellantis's Majestic API. Map updates do not require a license
 3. **A FAT32 USB drive** with an MBR partition table. The NAC does not support exFAT, NTFS, or GPT
+
+The **certificates** and the **license** are two different things. The certificates that sign the firmware are inside the `.tar` archive (`SWL/<UpdateID>/Certificates/`), so they come with the download. The license is a separate `.key` file that is downloaded on its own for your UIN. A broken archive with invalid certificates can't be fixed with a valid license, and a map update needs no license at all.
 
 ### Why the official app fails
 

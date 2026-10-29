@@ -220,11 +220,13 @@ A BSI reset is rarely needed for a firmware or map update. If you do need one, d
 
 The NAC firmware update process requires:
 
-1. **The firmware archive** — a `.tar` file containing an `SWL` folder with the signed firmware packages. The same archive works for all NAC Wave 4 units regardless of vehicle brand
+1. **The firmware archive** — a `.tar` file containing an `SWL` folder with the signed firmware packages and the certificates they are signed with. The same archive works for all NAC Wave 4 units regardless of vehicle brand
 2. **A license file** — a PKCS#7 signed, encrypted file specific to your NAC unit (identified by UIN) and the firmware version (identified by UpdateID). This is downloaded from Stellantis's Majestic API. Map updates do not require a license
 3. **A FAT32-formatted USB drive** with an MBR partition table. The NAC does not support exFAT, NTFS, APFS, or GPT partition tables
 
-The "incompatible hardware" error is a generic catch-all that can mean: bad archive, invalid/missing license, expired signing certificate, corrupted USB, or macOS metadata files interfering with the directory listing. It almost never actually means incompatible hardware.
+The **certificates** and the **license** are two different things. The certificates that sign the firmware are inside the `.tar` archive (`SWL/<UpdateID>/Certificates/`), so they come with the download. The license is a separate `.key` file that is downloaded on its own for your UIN. A broken archive with invalid certificates can't be fixed with a valid license, and a map update needs no license at all.
+
+The "incompatible hardware" error is a generic catch-all that can mean: bad archive, invalid/missing license, invalid signing certificates in the archive, corrupted USB, or macOS metadata files interfering with the directory listing. It almost never actually means incompatible hardware.
 
 ### Why the official app fails
 
